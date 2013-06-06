@@ -1,0 +1,65 @@
+We have the triangle index list, from O to N-1. Maintain an index R in the
+range [0,N] which tells where to draw the partition between rendered triangles,
+in the range [0,R-1] are rendered and [R,N-1] unrendered triangles. This array
+will constantly have triangles swapped back and forth across the partition.
+Also maintain a constantly updated index table showing where the i'th triangle
+really sits in this array.
+
+To swap unrendered tri w/index K s.t. tri_index[K]>=R:
+	swap tri_index[tri_table[R]] <-> tri_index[tri_table[K]]
+	swap tri_table[R] <-> tri_table[K]
+	increment R
+
+To swap rendered tri w/index K s.t. tri_index[K]<R:
+	decrement R
+	swap tri_table[R] <-> tri_table[K]
+	swap tri_index[tri_table[R]] <-> tri_table[tri_table[K]]
+
+Each triangle in tri_table is really just an index into the original triangle
+table, just a triple of indices. But instead of using those indices for
+referencing the original vertices it accesses the array proxies[] which contains
+a "proxy" octree node pointer which tells which the representative vertex from
+that triangle. These proxy nodes are "lazily" updated -- if we encounter a
+proxy which is not pointing to a node on the "boundary", we move it either up
+or down whether it is inactive or active, respectively.
+
+Now we output an index array by simply going over the rendered triangles, and
+then passing these indices onto the graphics hardware. Used in conjunction with
+GPU-resident vertex buffers, all we are putting on the bus is the triangle
+indices, instead of the complete object geometry.
+
+When we are updating the active list of triangles, using our view-dependant
+error heuristic, each octree node has a little list of triangles which are
+"activated" by it. The activator of a triangle is the deepest node such that
+the triangle has 2 or 3 vertices inside the octree node's bounding box. The
+triangle will be degenerate iff this node is "active" -- if it is boundary or
+inactive the triangle will be a line or a point. Therefore when we set the node
+active, it "activates" the triangles.  So when we are updating the list of
+triangles, if a node must be expanded, any triangles on it's list of activated
+tris must be swapped from the unrendered to the rendered portion. Similarly,
+when we collapse a node from active to inactive we swap it's activated
+triangles from the rendered to unrendered list.
+
+Assuming we are doing a "constant" amount of work while updating proxies (i.e.
+they are not changing a lot in depth between frames), the algorithm is thus
+linear in the number of triangles currently being displayed, which is a lower
+bound, and we are also doing it in a way which can be rendered very quickly by
+hardware, because we minimize the amount of information put on the system bus.
+However the drawback to this is also we cannot set averaged normals for "proxy"
+vertices -- and this can cause ugly artifacting and ``popping'' like effects.
+
+A possible extension to this idea is to assemble triangle strips on the fly
+while outputting to the index array instead of just index triples. However this
+seems difficult with our current representation of the triangles -- we would
+have to switch entirely to a half-edge or similar structure, and that would
+seem to work better with something like edge collapses rather than this scheme,
+vertex contraction.
+
+TriangleAdjust(i) /* adjust triangle with index i */
+	k = tri_index[i]
+	v0 = tri_table[k][0]
+	v1 = tris[k][1]
+	v2 = tris[k][2]
+	UpdateProxy(v0)
+	UpdateProxy(v1)
+	UpdateProxy(v2)
