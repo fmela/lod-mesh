@@ -19,7 +19,7 @@ OBJ = $(SRC:%.c=%.o)
 DEPDIR = .depend
 DEP = $(SRC:%.c=$(DEPDIR)/%.dep)
 
-TARGET = hds
+TARGET = lod-mesh
 
 all: $(TARGET)
 $(TARGET) : $(OBJ)
