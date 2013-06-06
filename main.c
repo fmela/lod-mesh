@@ -720,6 +720,7 @@ display(void)
 	    glDisable(GL_LIGHTING);
 	    update_active_list(&view_info);
 	    render_octree(tree->root);
+	    coll=cull=rend=0;
 	} else {
 	    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	    if (pixel_shade)
@@ -734,6 +735,8 @@ display(void)
 	    if (pixel_shade)
 		glUseProgramObjectARB(0);
 	}
+    } else {
+	coll=cull=rend=0;
     }
 
     glDisable(GL_LIGHTING);
