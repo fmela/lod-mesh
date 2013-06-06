@@ -2,3 +2,4 @@
 .depend
 *.o
 lod-mesh
+.*.swp
