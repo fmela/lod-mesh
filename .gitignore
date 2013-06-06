@@ -1,1 +1,4 @@
 .DS_Store
+.depend
+*.o
+lod-mesh
