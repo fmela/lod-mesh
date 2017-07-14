@@ -39,25 +39,25 @@ typedef real vec3[3];
 #define M_PI	3.14159265358979323846
 #endif
 
-#define VecSwap(u,v) { \
-    real __t; \
-    __t=(u)[0]; (u)[0]=(v)[0]; (v)[0]=__t; \
-    __t=(u)[1]; (u)[1]=(v)[1]; (v)[1]=__t; \
-    __t=(u)[2]; (u)[2]=(v)[2]; (v)[2]=__t; }
+#define VecSwap(u,v) do { \
+    real __t = (u)[0]; (u)[0] = (v)[0]; (v)[0] = __t; \
+	 __t = (u)[1]; (u)[1] = (v)[1]; (v)[1] = __t; \
+	 __t = (u)[2]; (u)[2] = (v)[2]; (v)[2] = __t; } while (0)
 
-#define VecNormalize(v) { \
-    real t=VecDot(v, v); \
-    if (t!=0.0) { \
-	t=sqrt(t); \
-	v[0] /= t; \
-	v[1] /= t; \
-	v[2] /= t; } }
+#define VecNormalize(v) do { \
+    real __t = VecDot(v, v); \
+    if (__t != 0.0) { \
+	__t = 1. / sqrt(__t); \
+	v[0] *= __t; \
+	v[1] *= __t; \
+	v[2] *= __t; \
+    } } while (0)
 
-#define Normal(n,v0,v1,v2) { \
+#define Normal(n,v0,v1,v2) do { \
     vec3 __u, __v; \
     VecSub(__u, v1, v0); \
     VecSub(__v, v2, v0); \
-    VecCross(n, __u, __v); }
+    VecCross(n, __u, __v); } while (0)
 
 #define DEG2RAD	(M_PI/180.0)
 #define RAD2DEG	(180.0/M_PI)

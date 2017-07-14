@@ -8,6 +8,10 @@ static void face_normals(mesh *m);
 static void vertex_normals(mesh *m);
 static void vertex_bbox(mesh *m);
 
+static const char *const kFieldOrder[] = {
+  "x","y","z", "nx","ny","nz", "red","green","blue", "tu","tv", NULL
+};
+
 mesh *
 mesh_load(const char *file)
 {
@@ -16,17 +20,9 @@ mesh_load(const char *file)
     color3u *vcolors=NULL;
     texcoord2f *vtexcoords=NULL;
     index3u *tris=NULL;
-    int nv, nt, np;
     FILE *fp=NULL;
     char buf[256]={0}, type[256], field[256], *ptr;
-    short order[11];
-    double fields[11];
     mesh *m=NULL;
-    int i, j, k, r, nf;
-    const char *field_order[] = {
-	"x","y","z", "nx","ny","nz", "red","green","blue", "tu","tv", NULL
-    };
-
     if ((fp = fopen(file, "r")) == NULL)
 	goto fail;
 
@@ -34,43 +30,33 @@ mesh_load(const char *file)
 	!fgets(buf, sizeof(buf), fp) || strcmp(buf, "format ascii 1.0\n"))
 	goto fail;
 
-    for (i=0; i<11; i++)
-	order[i]=-1;
-
     do {
 	fgets(buf, sizeof(buf), fp);
     } while (strncmp(buf, "comment", 7) == 0);
 
     /* read number of vertices */
-    if (strncmp(buf, "element vertex", 14) == 0)
-	nv = strtol(buf+15, NULL, 10);
-    else
-	nv = -1;
+    const int nv=(strncmp(buf, "element vertex", 14) == 0) ? strtol(buf+15, NULL, 10) : -1;
 
     if (nv <= 0)
 	goto fail;
 
-    for (i=0; i<11; i++)
+    short order[11];
+    for (int i=0; i<11; i++)
 	order[i]=-1;
 
     /* read order of properties */
-    for (i=0; fgets(buf,sizeof(buf),fp) && strncmp(buf,"property",8)==0; i++) {
+    for (int i=0; fgets(buf,sizeof(buf),fp) && strncmp(buf,"property ",9)==0; i++) {
 	sscanf(buf, "property %s %s\n", type, field);
-	for (j=0; field_order[j]; j++)
-	    if (strcmp(field, field_order[j]) == 0) {
+	for (int j=0; kFieldOrder[j]; j++)
+	    if (strcmp(field, kFieldOrder[j]) == 0) {
 		if (order[j] != -1)
 		    goto fail;
 		order[j] = i;
 		break;
 	    }
     }
-    np = i;
 
-    if (strncmp(buf, "element face", 12) == 0)
-	nt = strtol(buf+13, NULL, 10);
-    else
-	nt = -1;
-
+    const int nt=(strncmp(buf, "element face ", 13) == 0) ? strtol(buf+13, NULL, 10) : -1;
     if (nt <= 0)
 	goto fail;
 
@@ -94,7 +80,7 @@ mesh_load(const char *file)
 	goto fail;
     verts=malloc(sizeof(*verts)*nv);
 
-    nf=3;
+    int nf=3;
 
     if (order[3]>=0 && order[4]>=0 && order[5]>=0) {
 	vnormals=malloc(sizeof(*vnormals)*nv);
@@ -112,11 +98,12 @@ mesh_load(const char *file)
     }
 
     /* read vertices */
-    for (i=0; i<nv; i++) {
+    for (int i=0; i<nv; i++) {
+        double fields[11];
 	if (!fgets(buf, sizeof(buf), fp))
 	    goto fail;
 	ptr=buf;
-	for (j=0; j<nf; j++)
+	for (int j=0; j<nf; j++)
 	    fields[j]=strtod(ptr,&ptr);
 
 	verts[i][0]=fields[order[0]];
@@ -141,11 +128,11 @@ mesh_load(const char *file)
 
     tris=malloc(sizeof(*tris)*nt);
     /* read triangles */
-    for (i=0; i<nt; i++) {
+    for (int i=0; i<nt; i++) {
 	if (!fgets(buf, sizeof(buf), fp))
 	    goto fail;
-	r = sscanf(buf, "%u %u %u %u",
-		   &k, &tris[i][0], &tris[i][1], &tris[i][2]);
+        int k;
+	int r = sscanf(buf, "%u %u %u %u", &k, &tris[i][0], &tris[i][1], &tris[i][2]);
 	if (k != 3 || r != 4 ||
 	    tris[i][0]==tris[i][1] ||
 	    tris[i][0]==tris[i][2] ||
@@ -182,7 +169,7 @@ mesh_load(const char *file)
 	vertex_normals(m);
     }
     /* normalize face normals */
-    for (i=0; i<nt; i++)
+    for (int i=0; i<nt; i++)
 	VecNormalize(m->tnormals[i]);
 
     return m;
@@ -202,13 +189,10 @@ fail:
 static void
 face_normals(mesh *m)
 {
-    int j;
-    real *v0,*v1,*v2;
-
-    for (j=0; j<m->nt; j++) {
-	v0=m->verts[m->tris[j][0]];
-	v1=m->verts[m->tris[j][1]];
-	v2=m->verts[m->tris[j][2]];
+    for (int j=0; j<m->nt; j++) {
+	real* v0=m->verts[m->tris[j][0]];
+	real* v1=m->verts[m->tris[j][1]];
+	real* v2=m->verts[m->tris[j][2]];
 	Normal(m->tnormals[j], v0, v1, v2);
 //	VecNormalize(m->tnormals[j]);
     }
@@ -217,13 +201,11 @@ face_normals(mesh *m)
 static void
 vertex_normals(mesh *m)
 {
-    int j, k;
-
-    for (j=0; j<m->nv; j++)
+    for (int j=0; j<m->nv; j++)
 	m->vnormals[j][0]=m->vnormals[j][1]=m->vnormals[j][2]=0;
 
-    for (j=0; j<m->nt; j++) {
-	k = m->tris[j][0];
+    for (int j=0; j<m->nt; j++) {
+	int k = m->tris[j][0];
 	VecAdd(m->vnormals[k], m->vnormals[k], m->tnormals[j]);
 	k = m->tris[j][1];
 	VecAdd(m->vnormals[k], m->vnormals[k], m->tnormals[j]);
@@ -231,19 +213,17 @@ vertex_normals(mesh *m)
 	VecAdd(m->vnormals[k], m->vnormals[k], m->tnormals[j]);
     }
 
-    for (j=0; j<m->nv; j++)
+    for (int j=0; j<m->nv; j++)
 	VecNormalize(m->vnormals[j]);
 }
 
 static void
 vertex_bbox(mesh *m)
 {
-    int j;
-
     VecSet(m->min, m->verts[0]);
     VecSet(m->max, m->verts[0]);
 
-    for (j=0; j<m->nv; j++) {
+    for (int j=0; j<m->nv; j++) {
 	if (m->min[0]>m->verts[j][0]) m->min[0]=m->verts[j][0]; else
 	if (m->max[0]<m->verts[j][0]) m->max[0]=m->verts[j][0];
 
@@ -278,16 +258,14 @@ mesh_free(mesh *m)
 void
 mesh_flip(mesh *m)
 {
-    int j,k;
-
     /* flip all normals and change triangle orientation */
-    for (j=0; j<m->nt; j++) {
-	k=m->tris[j][1];
+    for (int j=0; j<m->nt; j++) {
+	int k=m->tris[j][1];
 	m->tris[j][1]=m->tris[j][2];
 	m->tris[j][2]=k;
 	VecScale(m->tnormals[j], m->tnormals[j], -1);
     }
-    for (j=0; j<m->nv; j++) {
+    for (int j=0; j<m->nv; j++) {
 	VecScale(m->vnormals[j], m->vnormals[j], -1);
     }
 }

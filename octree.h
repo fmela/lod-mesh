@@ -11,7 +11,6 @@
 #include "mesh.h"
 #include "vec3.h"
 
-typedef struct triangle	    triangle;
 typedef struct octree_node  octree_node;
 
 typedef enum {

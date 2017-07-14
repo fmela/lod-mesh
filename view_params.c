@@ -5,19 +5,17 @@ view_setup(view_params *vp,
 	   const vec3 eye, const vec3 gaze, const vec3 up,
 	   real fovy, real aspect, real znear, real zfar)
 {
-    real d, half_fov;
-
     VecSet(vp->eye, eye);
     /* set up orthonormal gaze, up, and right vectors.
      * up is only required to be an approximation to the up direction */
     VecSet(vp->gaze, gaze);
     VecNormalize(vp->gaze);
-    d = VecDot(vp->gaze, up);
+    const real d = VecDot(vp->gaze, up);
     VecSAdd(vp->up, up, vp->gaze, -d);
     VecNormalize(vp->up);
     VecCross(vp->right, vp->gaze, vp->up);
 
-    half_fov = 0.5 * fovy * DEG2RAD;
+    const real half_fov = 0.5 * fovy * DEG2RAD;
     vp->u = znear * tan(half_fov);
     vp->r = vp->u * aspect;
     vp->fovy = fovy;
