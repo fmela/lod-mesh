@@ -1,16 +1,15 @@
 CC := $(shell which clang || which gcc)
 
-INCDIRS = /usr/X11R6/include
-DBGFLAGS = g3
-OPTFLAGS = O2
-WRNFLAGS = Wall W
-CFLAGS  = $(WRNFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(INCDIRS:%=I%)
-CFLAGS := $(CFLAGS:%=-%)
+INCDIRS =
+DBGFLAGS = -g3
+OPTFLAGS = -O2
+WRNFLAGS = -Wall -W -Wno-deprecated-declarations
+CFLAGS := $(WRNFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(INCDIRS:%=I%)
 
-LDDIRS = /usr/X11R6/lib
+LDDIRS =
 LDLIBS = m
-GLLIBS = glut
-LDFLAGS = $(LDDIRS:%=-L%) $(LDLIBS:%=-l%) $(GLLIBS:%=-l%) -framework OpenGL
+GLLIBS =
+LDFLAGS = $(LDDIRS:%=-L%) $(LDLIBS:%=-l%) $(GLLIBS:%=-l%) -framework OpenGL -framework GLUT
 
 SRC = $(wildcard *.c)
 OBJ = $(SRC:%.c=%.o)
@@ -22,7 +21,7 @@ $(TARGET) : $(OBJ)
 	$(CC) -o $(TARGET) $(OBJ) $(LDFLAGS)
 
 %.o : %.c
-	$(CC) $(CFLAGS) $(INCFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 .PHONY : clean
 clean :

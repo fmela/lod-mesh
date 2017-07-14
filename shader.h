@@ -1,13 +1,17 @@
 #ifndef _SHADER_H_
 #define _SHADER_H_
 
-#include <GL/gl.h>
-#include <GL/glext.h>
+#if defined(__APPLE__)
+# include <OpenGL/gl.h>
+#else
+# include <GL/gl.h>
+# include <GL/glext.h>
+#endif
 
 typedef struct {
-    GLcharARB	*vshader;
+    GLchar	*vshader;
     int		 vshader_size;
-    GLcharARB	*fshader;
+    GLchar	*fshader;
     int		 fshader_size;
 } shader;
 

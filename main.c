@@ -8,34 +8,15 @@
 #include <assert.h>
 #include <math.h>
 
-#include <GL/gl.h>
-#include <GL/glut.h>
-#include <GL/glext.h>
-#include <GL/freeglut_ext.h>
-
-#define TRIHASH_SIZE	15889
-
-static PFNGLGENBUFFERSARBPROC glGenBuffersARB = NULL;
-static PFNGLBINDBUFFERARBPROC glBindBufferARB = NULL;
-static PFNGLBUFFERDATAARBPROC glBufferDataARB = NULL;
-static PFNGLDELETEBUFFERSARBPROC glDeleteBuffersARB = NULL;
-
-static PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB = NULL;
-static PFNGLSHADERSOURCEARBPROC glShaderSourceARB = NULL;
-static PFNGLCOMPILESHADERARBPROC glCompileShaderARB = NULL;
-static PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB = NULL;
-static PFNGLATTACHOBJECTARBPROC glAttachObjectARB = NULL;
-static PFNGLLINKPROGRAMARBPROC glLinkProgramARB = NULL;
-static PFNGLCREATEPROGRAMOBJECTARBPROC glCreateProgramObjectARB = NULL;
-static PFNGLUSEPROGRAMOBJECTARBPROC glUseProgramObjectARB = NULL;
-static PFNGLDETACHOBJECTARBPROC glDetachObjectARB = NULL;
-static PFNGLDELETEOBJECTARBPROC glDeleteObjectARB = NULL;
-static PFNGLGETINFOLOGARBPROC glGetInfoLogARB = NULL;
-static PFNGLUNIFORM3FARBPROC glUniform3fARB = NULL;
-static PFNGLGETUNIFORMLOCATIONARBPROC glGetUniformLocationARB = NULL;
-
-#define LoadGLFunc(name) \
-	(name = glutGetProcAddress(#name))
+#if defined(__APPLE__)
+# include <OpenGL/gl.h>
+# include <GLUT/glut.h>
+#else
+# include <GL/gl.h>
+# include <GL/glut.h>
+# include <GL/glext.h>
+# include <GL/freeglut_ext.h>
+#endif
 
 #include "aabb.h"
 #include "draw_string.h"
@@ -67,9 +48,9 @@ int		mouse_x, mouse_y;
 
 int		pixel_shade = 0;
 shader*		shader_strings = NULL;
-GLhandleARB	shader_vert_program = 0;
-GLhandleARB	shader_frag_program = 0;
-GLhandleARB	shader_program = 0;
+GLuint		shader_vert_program = 0;
+GLuint		shader_frag_program = 0;
+GLuint		shader_program = 0;
 
 int		vbo_init = 0;
 GLuint		vbo_id[3];
@@ -107,16 +88,16 @@ float		detail_threshold = 1e-9;
 float		silhouette_threshold = 5e-10;
 
 static void
-print_info(GLhandleARB object)
+print_info(GLuint program)
 {
     int len = 0;
 
-    glGetObjectParameterivARB(object, GL_OBJECT_INFO_LOG_LENGTH_ARB, &len);
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
 
     if (len != 0) {
 	char *buf = malloc(len);
-	glGetInfoLogARB(object, len, &len, buf);
-	printf("Object Info Log:\n%s\n", buf);
+	glGetShaderInfoLog(program, len, &len, buf);
+	printf("Program Info Log:\n%s\n", buf);
 	free(buf);
     } else {
 	printf("No Info Log\n");
@@ -128,22 +109,22 @@ init_shader()
 {
     GLint status;
 
-    if (!LoadGLFunc(glCreateShaderObjectARB) ||
-	!LoadGLFunc(glShaderSourceARB) ||
-	!LoadGLFunc(glCompileShaderARB) ||
-	!LoadGLFunc(glGetObjectParameterivARB) ||
-	!LoadGLFunc(glAttachObjectARB) ||
-	!LoadGLFunc(glLinkProgramARB) ||
-	!LoadGLFunc(glCreateProgramObjectARB) ||
-	!LoadGLFunc(glUseProgramObjectARB) ||
-	!LoadGLFunc(glDetachObjectARB) ||
-	!LoadGLFunc(glDeleteObjectARB) ||
-	!LoadGLFunc(glGetInfoLogARB) ||
-	!LoadGLFunc(glGetUniformLocationARB) ||
-	!LoadGLFunc(glUniform3fARB)) {
+    /* if (!LoadGLFunc(glCreateShaderObject) ||
+	!LoadGLFunc(glShaderSource) ||
+	!LoadGLFunc(glCompileShader) ||
+	!LoadGLFunc(glGetObjectParameteriv) ||
+	!LoadGLFunc(glAttachObject) ||
+	!LoadGLFunc(glLinkProgram) ||
+	!LoadGLFunc(glCreateProgramObject) ||
+	!LoadGLFunc(glUseProgramObject) ||
+	!LoadGLFunc(glDetachObject) ||
+	!LoadGLFunc(glDeleteObject) ||
+	!LoadGLFunc(glGetInfoLog) ||
+	!LoadGLFunc(glGetUniformLocation) ||
+	!LoadGLFunc(glUniform3f)) {
 	printf("GLSL not supported. Sorry!\n");
 	exit(1);
-    }
+    } */
 
     shader_strings = shader_load("shader");
     if (shader_strings == NULL) {
@@ -151,40 +132,37 @@ init_shader()
 	exit(1);
     }
 
-    shader_vert_program = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
-    shader_frag_program = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
+    shader_vert_program = glCreateShader(GL_VERTEX_SHADER);
+    shader_frag_program = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSourceARB(shader_vert_program, 1,
-		      (const GLcharARB **)&shader_strings->vshader, NULL);
-    glShaderSourceARB(shader_frag_program, 1,
-		      (const GLcharARB **)&shader_strings->fshader, NULL);
+    glShaderSource(shader_vert_program, 1,
+		   (const GLchar **)&shader_strings->vshader, NULL);
+    glShaderSource(shader_frag_program, 1,
+		   (const GLchar **)&shader_strings->fshader, NULL);
 
-    glCompileShaderARB(shader_vert_program);
-    glGetObjectParameterivARB(shader_vert_program,
-			      GL_OBJECT_COMPILE_STATUS_ARB, &status);
+    glCompileShader(shader_vert_program);
+    glGetProgramiv(shader_vert_program, GL_COMPILE_STATUS, &status);
     print_info(shader_vert_program);
     if (!status) {
 	printf("vertex program compilation failed\n");
 	exit(1);
     }
 
-    glCompileShaderARB(shader_frag_program);
-    glGetObjectParameterivARB(shader_frag_program,
-			      GL_OBJECT_COMPILE_STATUS_ARB, &status);
+    glCompileShader(shader_frag_program);
+    glGetProgramiv(shader_frag_program, GL_COMPILE_STATUS, &status);
     print_info(shader_frag_program);
     if (!status) {
 	printf("fragment program compilation failed\n");
 	exit(1);
     }
 
-    shader_program = glCreateProgramObjectARB();
-    glAttachObjectARB(shader_program, shader_vert_program);
-    glAttachObjectARB(shader_program, shader_frag_program);
+    shader_program = glCreateProgram();
+    glAttachShader(shader_program, shader_vert_program);
+    glAttachShader(shader_program, shader_frag_program);
 
-    glLinkProgramARB(shader_program);
+    glLinkProgram(shader_program);
 
-    glGetObjectParameterivARB(shader_program,
-			      GL_OBJECT_LINK_STATUS_ARB, &status);
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &status);
     print_info(shader_program);
     if (!status) {
 	printf("program link failed\n");
@@ -199,19 +177,19 @@ delete_shader()
 
     printf("deleting shader... \n");
 
-    glUseProgramObjectARB(0);
+    glUseProgram(0);
 
-    glDetachObjectARB(shader_program, shader_vert_program);
+    glDetachShader(shader_program, shader_vert_program);
     if ((k=glGetError()) != 0) printf("error0=%x\n", k);
-    glDeleteObjectARB(shader_vert_program);
+    glDeleteShader(shader_vert_program);
     if ((k=glGetError()) != 0) printf("error1=%x\n", k);
 
-    glDetachObjectARB(shader_program, shader_frag_program);
+    glDetachShader(shader_program, shader_frag_program);
     if ((k=glGetError()) != 0) printf("error2=%x\n", k);
-    glDeleteObjectARB(shader_frag_program);
+    glDeleteShader(shader_frag_program);
     if ((k=glGetError()) != 0) printf("error3=%x\n", k);
 
-    glDeleteObjectARB(shader_program);
+    glDeleteProgram(shader_program);
     if ((k=glGetError()) != 0) printf("error4=%x\n", k);
 }
 
@@ -219,35 +197,37 @@ void
 create_vbos()
 {
     if (!vbo_init) {
-	if (glGenBuffersARB == NULL) {
-	    if (!LoadGLFunc(glGenBuffersARB) ||
-		!LoadGLFunc(glBindBufferARB) ||
-		!LoadGLFunc(glBufferDataARB) ||
-		!LoadGLFunc(glDeleteBuffersARB)) {
+	/*
+	if (glGenBuffers == NULL) {
+	    if (!LoadGLFunc(glGenBuffers) ||
+		!LoadGLFunc(glBindBuffer) ||
+		!LoadGLFunc(glBufferData) ||
+		!LoadGLFunc(glDeleteBuffers)) {
 		printf("vertex_buffer_object extension not supported!\n");
 		exit(1);
 	    }
 	    printf("vertex_buffer_object extension loaded\n");
 	}
+	*/
 
-	glGenBuffersARB(3, vbo_id);
+	glGenBuffers(3, vbo_id);
 
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[0]);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB, m->nv*sizeof(vec3),
-			m->verts, GL_STATIC_DRAW_ARB);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_id[0]);
+	glBufferData(GL_ARRAY_BUFFER, m->nv*sizeof(vec3),
+			m->verts, GL_STATIC_DRAW);
 
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[1]);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB, m->nv*sizeof(vec3),
-			m->vnormals, GL_STATIC_DRAW_ARB);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_id[1]);
+	glBufferData(GL_ARRAY_BUFFER, m->nv*sizeof(vec3),
+			m->vnormals, GL_STATIC_DRAW);
 
-	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, vbo_id[2]);
-	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB,  m->nt*sizeof(index3u),
-			m->tris, GL_STATIC_DRAW_ARB);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id[2]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,  m->nt*sizeof(index3u),
+			m->tris, GL_STATIC_DRAW);
 
 	vbo_init = 1;
 
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 }
 
@@ -255,16 +235,16 @@ void
 delete_vbos()
 {
     if (vbo_init) {
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[0]);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, NULL, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_id[0]);
+	glBufferData(GL_ARRAY_BUFFER, 0, NULL, 0);
 
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[1]);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, NULL, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_id[1]);
+	glBufferData(GL_ARRAY_BUFFER, 0, NULL, 0);
 
-	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, vbo_id[2]);
-	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, 0, NULL, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id[2]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, NULL, 0);
 
-	glDeleteBuffersARB(3, vbo_id);
+	glDeleteBuffers(3, vbo_id);
 	vbo_init = 0;
     }
 }
@@ -664,8 +644,8 @@ display(void)
 
 
 //  if (shader_program != 0)
-//	glUniform3fARB(glGetUniformLocationARB(shader_program, "EyePos"),
-//		       eye[0], eye[1], eye[2]);
+//	glUniform3f(glGetUniformLocation(shader_program, "EyePos"),
+//		    eye[0], eye[1], eye[2]);
 
     /* setup viewing parameters */
     glMatrixMode(GL_PROJECTION);
@@ -724,7 +704,7 @@ display(void)
 	} else {
 	    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	    if (pixel_shade)
-		glUseProgramObjectARB(shader_program);
+		glUseProgram(shader_program);
 	    if (fullres) {
 		fullres_render();
 		coll=cull=0;
@@ -733,7 +713,7 @@ display(void)
 		lod_render(update, &view_info, &coll, &cull, &rend);
 	    }
 	    if (pixel_shade)
-		glUseProgramObjectARB(0);
+		glUseProgram(0);
 	}
     } else {
 	coll=cull=rend=0;
@@ -1029,14 +1009,14 @@ lod_render(int update,
     }
 
     glEnableClientState(GL_VERTEX_ARRAY);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id[0]);
     glVertexPointer(3, GL_FLOAT, 0, 0);
 
     glEnableClientState(GL_NORMAL_ARRAY);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id[1]);
     glNormalPointer(GL_FLOAT, 0, 0);
 
-    glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glPushMatrix();
     glTranslatef(-tree->root->bb_midpt[0],
@@ -1045,12 +1025,12 @@ lod_render(int update,
     glDrawElements(GL_TRIANGLES, nt, GL_UNSIGNED_INT, tri_index);
     glPopMatrix();
 
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 
     t = get_timer()-t;
-//  printf("lod render [%gs] (%d proxy updates)\n", t, pupdates);
+    printf("lod render [%gs] (%d proxy updates)\n", t, pupdates);
 }
 
 void
@@ -1061,13 +1041,13 @@ fullres_render()
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_NORMAL_ARRAY);
 
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id[0]);
     glVertexPointer(3, GL_FLOAT, 0, 0);
 
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_id[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id[1]);
     glNormalPointer(GL_FLOAT, 0, 0);
 
-    glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, vbo_id[2]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id[2]);
 
     glPushMatrix();
     glTranslatef(-tree->root->bb_midpt[0],
@@ -1076,7 +1056,7 @@ fullres_render()
     glDrawElements(GL_TRIANGLES, m->nt*3, GL_UNSIGNED_INT, 0);
     glPopMatrix();
 
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_NORMAL_ARRAY);
