@@ -3,7 +3,7 @@ CC := $(shell which clang || which gcc)
 INCDIRS =
 DBGFLAGS = -g3
 OPTFLAGS = -O2
-WRNFLAGS = -Wall -W -Wno-deprecated-declarations
+WRNFLAGS = -Wall -W -Wshadow -Wno-deprecated-declarations
 CFLAGS := $(WRNFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(INCDIRS:%=I%)
 
 LDDIRS =
