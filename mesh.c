@@ -25,7 +25,7 @@ mesh_load(const char *file)
     mesh *m=NULL;
     if ((fp = fopen(file, "r")) == NULL)
 	goto fail;
-
+    /* TODO: implement support for binary PLY format. */
     if (!fgets(buf, sizeof(buf), fp) || strcmp(buf, "ply\n") ||
 	!fgets(buf, sizeof(buf), fp) || strcmp(buf, "format ascii 1.0\n"))
 	goto fail;
@@ -133,7 +133,7 @@ mesh_load(const char *file)
 	    goto fail;
         int k;
 	int r = sscanf(buf, "%u %u %u %u", &k, &tris[i][0], &tris[i][1], &tris[i][2]);
-	if (k != 3 || r != 4 ||
+	if (r != 4 || k != 3 ||
 	    tris[i][0]==tris[i][1] ||
 	    tris[i][0]==tris[i][2] ||
 	    tris[i][1]==tris[i][2])
