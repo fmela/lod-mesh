@@ -1,20 +1,21 @@
 #ifndef _MESH_H_
 #define _MESH_H_
 
+#include <stdint.h>
 #include "vec3.h"
 
-typedef unsigned int	index3u[3];
-typedef unsigned char	color3u[3];
-typedef float		texcoord2f[2];
+typedef uint32_t    index3u[3];
+typedef uint8_t	    color3ub[3];
+typedef float	    texcoord2f[2];
 
 typedef struct {
-    int		 nv;		/* number of vertices */
+    uint32_t	nv;		/* number of vertices */
     vec3	*verts;		/* vertex array */
     vec3	*vnormals;	/* vertex normals */
-    color3u	*vcolors;	/* vertex colors */
+    color3ub	*vcolors;	/* vertex colors */
     texcoord2f	*vtexcoords;	/* vertex texture coordinates */
 
-    int		 nt;		/* number of triangles */
+    unsigned	nt;		/* number of triangles */
     index3u	*tris;		/* triangle vertex index array */
     vec3	*tnormals;	/* triangle normals */
 
